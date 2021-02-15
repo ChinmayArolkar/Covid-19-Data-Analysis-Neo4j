@@ -1,0 +1,74 @@
+Nodes:
+---------------------
+//City
+
+LOAD CSV WITH HEADERS FROM 'file:///college.csv' AS rowCity
+MERGE (city:City {city_code: toInteger(rowCity.city_code)})
+  ON CREATE SET city.city = rowCity.city;
+
+//County
+
+LOAD CSV WITH HEADERS FROM 'file:///college.csv' AS rowCounty
+MERGE (county:County {county_code: toInteger(rowCounty.county_code)})
+ON CREATE SET county.county = rowCounty.county;
+
+//State
+
+LOAD CSV WITH HEADERS FROM 'file:///college.csv' AS rowState
+MERGE (state:State {state_code: toInteger(rowState.state_code)})
+  ON CREATE SET state.state = rowState.state;
+
+//College
+
+LOAD CSV WITH HEADERS FROM 'file:///college.csv' AS rowCol
+MERGE (college:College {ipeds_id: toInteger(rowCol.ipeds_id)})
+  ON CREATE SET college.college = rowCol.college
+  ON CREATE SET college.cases = toInteger(rowCol.cases)
+  ON CREATE SET college.date = rowCol.date;
+
+//Cases
+
+LOAD CSV WITH HEADERS FROM 'file:///cases.csv' AS rowUScases
+MERGE (cases:Cases {date: rowUScases.date})
+  ON CREATE SET cases.cases = toInteger(rowUScases.cases);
+
+
+Index:
+--------------------------
+CREATE INDEX city_code FOR (c:City) ON (c.city_code);
+CREATE INDEX state_code FOR (s:State) ON (s.state_code);
+CREATE INDEX county_code FOR (c:County) ON (c.county_code);
+CREATE INDEX college_ipeds FOR (c:College) ON (c.ipeds_id);
+CREATE INDEX casesUS FOR (c:Cases) ON (c.date);
+
+Constraint:
+------------------------------------
+CREATE CONSTRAINT ipeds_id ON (c:College) ASSERT c.ipeds_id IS UNIQUE;
+
+
+Relationship:
+----------------------
+// Create relationships between city and college
+
+LOAD CSV WITH HEADERS FROM 'file:///college.csv' AS rowCol
+MATCH (city:City {city_code: toInteger(rowCol.city_code)})
+MATCH (city:City {city: rowCol.city})
+MATCH (college:College {ipeds_id: toInteger(rowCol.ipeds_id)})
+MERGE (college)-[:IS_PART_OF]->(city);
+
+
+// Create relationships between city and county
+
+LOAD CSV WITH HEADERS FROM "file:///college.csv" AS rowCol
+MATCH (city:City {city_code: toInteger(rowCol.city_code)})
+MATCH (city:City {city: rowCol.city})
+MATCH (county:County {county_code: toInteger(rowCol.county_code)})
+MERGE (city)-[:CITY_IS_LOCATED_IN_COUNTY]->(county);
+
+
+// Create relationships between state and county
+
+LOAD CSV WITH HEADERS FROM "file:///college.csv" AS rowCol
+MATCH (county:County {county_code: toInteger(rowCol.county_code)})
+MATCH (state:State {state_code: toInteger(rowCol.state_code)})
+MERGE (county)-[:COUNTY_IS_LOCATED_IN_STATE]->(state);
